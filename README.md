@@ -204,8 +204,8 @@ npm start
 
 ## 모델 학습 (선택)
 
-모델은 Google Colab (GPU) 환경에서 학습 후 `.pth` 파일로 저장합니다.  
-학습된 가중치는 `backend/ml/weights/best_model.pth`에 배치하면 서버 시작 시 자동 로드됩니다.
+모델은 Google Colab (GPU) 환경에서 학습 후 `.pth` 파일로 저장.  
+학습된 가중치는 `backend/ml/weights/best_model.pth`에 배치하면 서버 시작 시 자동 로드됨.
 
 ```bash
 # SKAB 데이터셋 다운로드
