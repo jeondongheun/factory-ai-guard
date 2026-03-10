@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+*.pth
+node_modules/
+.DS_Store
+dist/
+*.egg-info/
+.venv/
+venv/
+backend/ml/data/
+backend/venv/
+frontend/node_modules/
