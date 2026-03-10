@@ -1,4 +1,4 @@
-# 🏭 Factory-AI-Guard
+# Factory-AI-Guard
 
 > **Real-time smart factory anomaly detection system**  
 > LSTM time-series encoder + RAG-augmented LLM diagnosis | FastAPI · React · Docker Compose
@@ -11,20 +11,20 @@
 
 ---
 
-## 📌 프로젝트 개요
+## 프로젝트 개요
 
-스마트팩토리 환경에서 8개 센서 데이터를 실시간으로 수집·분석하여 설비 이상을 자동으로 탐지하고, RAG 기반 LLM이 원인 분석 및 조치 방안을 제시하는 **End-to-End AI 모니터링 시스템**입니다.
+스마트팩토리 환경에서 8개 센서 데이터를 실시간으로 수집·분석하여 설비 이상을 자동으로 탐지하고, RAG 기반 LLM이 원인 분석 및 조치 방안을 제시하는 End-to-End AI 모니터링 시스템.
 
 ### 핵심 기술
-- **LSTM 시계열 인코더**: 60개 타임스텝 윈도우 기반 이상 패턴 학습
-- **RAG + LLM 진단**: 유지보수 매뉴얼을 벡터 검색하여 LLM 프롬프트에 주입, Claude API로 원인 분석
-- **실시간 WebSocket 스트리밍**: 1초 간격 센서 데이터 푸시
-- **REST API**: FastAPI 기반 16개 엔드포인트, Swagger 자동 문서화
-- **Docker Compose**: 멀티컨테이너 서비스 운영 (Backend / Frontend / PostgreSQL / Redis / Nginx)
+- LSTM 시계열 인코더: 60개 타임스텝 윈도우 기반 이상 패턴 학습
+- RAG + LLM 진단: 유지보수 매뉴얼을 벡터 검색하여 LLM 프롬프트에 주입, Claude API로 원인 분석
+- 실시간 WebSocket 스트리밍: 1초 간격 센서 데이터 푸시
+- REST API: FastAPI 기반 16개 엔드포인트, Swagger 자동 문서화
+- Docker Compose: 멀티컨테이너 서비스 운영 (Backend / Frontend / PostgreSQL / Redis / Nginx)
 
 ---
 
-## 🗂️ 사용 데이터셋
+## 사용 데이터셋
 
 | 데이터셋 | 설명 | 센서 수 | 출처 |
 |---------|------|--------|------|
@@ -33,7 +33,7 @@
 
 ---
 
-## 🏗️ 시스템 아키텍처
+## 시스템 아키텍처
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -78,7 +78,7 @@ PostgreSQL      Redis
 
 ---
 
-## 🖥️ 주요 기능
+## 주요 기능
 
 ### 1. 실시간 대시보드
 - 8채널 센서값 카드 (정상/경고/위험 색상 구분)
@@ -114,7 +114,7 @@ PostgreSQL      Redis
 
 ---
 
-## ⚙️ 기술 스택
+## 기술 스택
 
 ### Backend
 | 기술 | 용도 |
@@ -143,7 +143,7 @@ PostgreSQL      Redis
 
 ---
 
-## 🚀 실행 방법
+## 실행 방법
 
 ### 사전 요구사항
 - Docker Desktop
@@ -202,7 +202,7 @@ npm start
 
 ---
 
-## 🤖 모델 학습 (선택)
+## 모델 학습 (선택)
 
 모델은 Google Colab (GPU) 환경에서 학습 후 `.pth` 파일로 저장합니다.  
 학습된 가중치는 `backend/ml/weights/best_model.pth`에 배치하면 서버 시작 시 자동 로드됩니다.
@@ -229,7 +229,7 @@ Sigmoid → 이상 확률
 
 ---
 
-## 📁 프로젝트 구조
+## 프로젝트 구조
 
 ```
 factory-ai-guard/
@@ -260,7 +260,7 @@ factory-ai-guard/
 
 ---
 
-## 📊 성능
+## 성능
 
 SKAB 데이터셋 기준 (valve1 폴더):
 
@@ -275,7 +275,7 @@ SKAB 데이터셋 기준 (valve1 폴더):
 
 ---
 
-## 📝 개발 환경
+## 개발 환경
 
 - **OS**: macOS (Apple Silicon M1)
 - **IDE**: Visual Studio Code
