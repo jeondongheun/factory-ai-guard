@@ -1,8 +1,85 @@
 import anthropic
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../../../.env'))
+
+# RAG 모듈 경로 등록
+_RAG_DIR = Path(__file__).parent.parent.parent / "ml" / "rag"
+if str(_RAG_DIR) not in sys.path:
+    sys.path.insert(0, str(_RAG_DIR))
+
+
+def _infer_mode_from_stats(sensor_stats: dict) -> str:
+    """sensor_stats의 유량값으로 운영 모드 추정"""
+    flow = sensor_stats.get("flow_rate", sensor_stats.get("Volume_Flow_RateRMS", None))
+    if flow is None:
+        return "high_flow"
+    flow = float(flow)
+    if flow > 100:
+        return "high_flow"
+    elif flow > 50:
+        return "mid_flow"
+    return "low_flow"
+
+
+def _build_rag_domain_section(
+    sensor_stats: dict,
+    severity: str,
+    probability: float,
+) -> str:
+    """
+    ChromaDB RAG 검색으로 도메인 지식 섹션 생성.
+    실패 시 하드코딩 기본값으로 fallback.
+    """
+    try:
+        from chroma_embed import retrieve_for_llm
+
+        mode = _infer_mode_from_stats(sensor_stats)
+
+        # severity → z_score 근사 (탐지 결과가 z_score를 직접 전달하지 않으므로)
+        z_approx = {"High": 3.5, "Medium": 2.0, "Low": 1.2, "Normal": 0.3}.get(severity, 1.5)
+
+        # 1순위 센서 추정 (유량 이상이면 Flow, 아니면 Accel)
+        accel = float(sensor_stats.get("accelerometer1", sensor_stats.get("Accelerometer1RMS", 0)))
+        flow  = float(sensor_stats.get("flow_rate", sensor_stats.get("Volume_Flow_RateRMS", 100)))
+        primary_sensor = "Accelerometer1RMS" if (accel > 0.3 and mode == "high_flow") else "Volume_Flow_RateRMS"
+
+        temp  = float(sensor_stats.get("temperature", sensor_stats.get("Temperature", 25)))
+        temp_anomaly = temp < 15 or temp > 40
+
+        rag = retrieve_for_llm(
+            mode           = mode,
+            z_score        = z_approx,
+            primary_sensor = primary_sensor,
+            fault_type     = "rotor_imbalance_suspected" if "Accel" in primary_sensor else "valve_anomaly_low",
+            temp_anomaly   = temp_anomaly,
+            n_results      = 3,
+        )
+
+        lines = []
+        for key in ("strategy", "thresholds", "fault_info", "temp_info"):
+            for doc in rag.get(key, [])[:2]:
+                lines.append(f"- {doc['document']}")
+
+        if lines:
+            return "Domain Knowledge (from RAG):\n" + "\n".join(lines)
+
+    except Exception:
+        pass
+
+    # Fallback: 하드코딩 기본 도메인 지식
+    return (
+        "Domain Knowledge:\n"
+        "- Normal temperature: 20-30°C (warning: >30°C, critical: >35°C)\n"
+        "- Normal vibration: <0.5g (warning: >0.5g, critical: >1.0g)\n"
+        "- Normal flow rate: 8-12 L/min (warning: <8, critical: <6)\n"
+        "- Normal pressure: 1.5-2.5 Bar (warning: >2.5, critical: >3.0)\n"
+        "- Normal current: 8-12A (warning: >12A, critical: >15A)"
+    )
+
 
 class LLMService:
     def __init__(self):
@@ -17,18 +94,16 @@ class LLMService:
         if self.client is None:
             return self._mock_diagnose(probability, severity)
         try:
+            # RAG로 도메인 지식 검색 (ChromaDB 없으면 자동 fallback)
+            domain_section = _build_rag_domain_section(sensor_stats, severity, probability)
+
             prompt = f"""You are an expert in smart factory anomaly detection.
 Sensor Statistics: {sensor_stats}
 Detection Result:
 - Anomaly Probability: {probability:.1%}
 - Severity: {severity}
 
-Domain Knowledge:
-- Normal temperature: 20-30°C (warning: >30°C, critical: >35°C)
-- Normal vibration: <0.5g (warning: >0.5g, critical: >1.0g)
-- Normal flow rate: 8-12 L/min (warning: <8, critical: <6)
-- Normal pressure: 1.5-2.5 Bar (warning: >2.5, critical: >3.0)
-- Normal current: 8-12A (warning: >12A, critical: >15A)
+{domain_section}
 
 Analyze the anomaly and respond in JSON:
 {{

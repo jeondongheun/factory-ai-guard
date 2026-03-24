@@ -21,6 +21,11 @@ class DetectionResponse(BaseModel):
     probability: float
     severity: str
     sensor_reading_id: Optional[int]
+    # RAAD-LLM 확장 필드 (Optional - 기존 클라이언트 호환)
+    mode: Optional[str] = None             # 운영 모드 (high/mid/low_flow)
+    z_score: Optional[float] = None        # 1순위 센서 z-score
+    primary_sensor: Optional[str] = None   # 탐지에 사용된 1순위 센서
+    fault_type: Optional[str] = None       # 추정 고장 유형
 
 class DiagnosisResponse(BaseModel):
     detection_id: int

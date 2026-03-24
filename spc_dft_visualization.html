@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>FactoryGuard-AI · SPC / DFT 시각화</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; padding: 24px; }
+  h1  { font-size: 1.5rem; color: #60a5fa; margin-bottom: 4px; }
+  .sub { font-size: 0.82rem; color: #64748b; margin-bottom: 28px; }
+
+  /* 파이프라인 배너 */
+  .pipeline {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; flex-wrap: wrap; margin-bottom: 32px;
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px 20px;
+  }
+  .pipe-step {
+    display: flex; flex-direction: column; align-items: center;
+    background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+    padding: 10px 16px; min-width: 110px; text-align: center;
+  }
+  .pipe-step .icon { font-size: 1.4rem; margin-bottom: 4px; }
+  .pipe-step .name { font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
+  .pipe-step .desc { font-size: 0.67rem; color: #475569; margin-top: 2px; }
+  .pipe-arrow { font-size: 1.2rem; color: #334155; padding: 0 6px; }
+  .pipe-step.active .name { color: #60a5fa; }
+  .pipe-step.active { border-color: #2563eb; }
+  .pipe-step.anomaly .name { color: #f87171; }
+  .pipe-step.anomaly { border-color: #ef4444; }
+
+  /* 섹션 */
+  .section { margin-bottom: 36px; }
+  .section-title {
+    font-size: 1rem; font-weight: 700; color: #f1f5f9;
+    margin-bottom: 4px; padding-bottom: 8px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .section-desc { font-size: 0.78rem; color: #64748b; margin-bottom: 16px; }
+
+  /* 차트 그리드 */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 960px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .card h3 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; font-weight: 600; }
+  .card canvas { width: 100% !important; }
+
+  /* 통계 배지 */
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-badge {
+    background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+    padding: 8px 14px; font-size: 0.78rem;
+  }
+  .stat-badge span { display: block; color: #64748b; font-size: 0.68rem; margin-bottom: 2px; }
+  .stat-badge strong { color: #60a5fa; font-size: 0.88rem; }
+  .stat-badge.warn strong { color: #f59e0b; }
+  .stat-badge.danger strong { color: #f87171; }
+
+  /* 수식 */
+  .formula {
+    background: #0f172a; border-left: 3px solid #2563eb; border-radius: 0 6px 6px 0;
+    padding: 10px 14px; font-family: 'Courier New', monospace; font-size: 0.8rem;
+    color: #94a3b8; margin-bottom: 16px; line-height: 1.8;
+  }
+  .legend-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.75rem; color: #64748b; }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<h1>🏭 FactoryGuard-AI · SPC / DFT 시각화</h1>
+<p class="sub">SKAB 수도 펌프 시스템 · 고유량 모드 · valve1 이상 시나리오 (RAAD-LLM 논문 기반)</p>
+
+<!-- ① 파이프라인 -->
+<div class="pipeline">
+  <div class="pipe-step active"><div class="icon">📡</div><div class="name">Raw Signal</div><div class="desc">센서 입력</div></div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step active"><div class="icon">📊</div><div class="name">SPC MAMR</div><div class="desc">UCL/LCL·정제</div></div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step active"><div class="icon">🎵</div><div class="name">DFT</div><div class="desc">주파수 분석</div></div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step active"><div class="icon">📐</div><div class="name">Z-score</div><div class="desc">모드별 비교</div></div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step active"><div class="icon">📋</div><div class="name">RAG Prompt</div><div class="desc">Fig.3 구조화</div></div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step anomaly"><div class="icon">🤖</div><div class="name">LLM (Claude)</div><div class="desc">Fig.4 출력</div></div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-step anomaly"><div class="icon">⚠️</div><div class="name">f(x)=1</div><div class="desc">이상 판정</div></div>
+</div>
+
+<!-- ② SPC MAMR -->
+<div class="section">
+  <div class="section-title">① SPC MAMR (Moving Average Moving Range) — 가속도계1(진동) 신호</div>
+  <div class="section-desc">논문 Eq.1–3: UCL = X̄ + 2.66·R̄, LCL = X̄ − 2.66·R̄, mR_UCL = 3.27·R̄ · 회색 영역 = Baseline C (60윈도우), 오렌지 영역 = Query (이상 발생)</div>
+
+  <div class="formula">
+    Eq.1  X̄  = mean(baseline)      Eq.2  R̄  = mean(mR)  where mR_i = |x_i − x_{i-1}|<br>
+    Eq.3  UCL = X̄ + 2.66·R̄        LCL = X̄ − 2.66·R̄        mR_UCL = 3.27·R̄
+  </div>
+
+  <div class="stats-row" id="spc-stats"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>X-Chart (신호값 + UCL / LCL / Center)</h3>
+      <canvas id="xchart" height="180"></canvas>
+    </div>
+    <div class="card">
+      <h3>mR-Chart (Moving Range + mR_UCL)</h3>
+      <canvas id="mrchart" height="180"></canvas>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;">
+    <div class="card">
+      <h3>2-Pass SPC Filter — 이상치 제거 전 / 후 비교</h3>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#60a5fa"></span>원본 신호</span>
+        <span><span class="legend-dot" style="background:#f87171"></span>제거된 이상치 (1st Pass)</span>
+        <span><span class="legend-dot" style="background:#34d399"></span>정제 신호 (DFT 입력)</span>
+      </div>
+      <canvas id="filterchart" height="130"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ③ 유동 모드 구분 -->
+<div class="section">
+  <div class="section-title">② 유량 신호 & 운전 모드 구분</div>
+  <div class="section-desc">고유량(>100 L/min) · 중유량(50–100) · 저유량(&lt;50) 모드에 따라 탐지 전략이 다름</div>
+  <div class="card">
+    <h3>유량(Volume Flow Rate) 시계열 + 모드 구분 색상</h3>
+    <div class="legend-row">
+      <span><span class="legend-dot" style="background:#22c55e"></span>고유량 (진동+유량 탐지)</span>
+      <span><span class="legend-dot" style="background:#f59e0b"></span>중유량 (유량만 탐지)</span>
+      <span><span class="legend-dot" style="background:#ef4444"></span>저유량 (유량만, 임계↑)</span>
+    </div>
+    <canvas id="flowchart" height="140"></canvas>
+  </div>
+</div>
+
+<!-- ④ DFT -->
+<div class="section">
+  <div class="section-title">③ DFT (Discrete Fourier Transform) — 진동 주파수 분석</div>
+  <div class="section-desc">논문 Eq.4–8: A_k = (2/N)|F_k|, f_max = argmax(A_k), ŝ(t) = A_max·sin(2π·f_max·t) + |s̄|</div>
+
+  <div class="formula">
+    Eq.4  F(k) = Σ s(t)·e^{−j2πkt/N}    Eq.5  A_k = (2/N)|F_k|<br>
+    Eq.6  f_max = argmax A_k (DC 제외)   Eq.7  A_max = A_{f_max}<br>
+    Eq.8  ŝ(t) = A_max · sin(2π·f_max·t) + |s̄|
+  </div>
+
+  <div class="stats-row" id="dft-stats"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>DFT 진폭 스펙트럼 — 정상 vs 이상 비교</h3>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#60a5fa"></span>정상 (A_max≈0.024)</span>
+        <span><span class="legend-dot" style="background:#f87171"></span>이상 (A_max≈0.071)</span>
+        <span><span class="legend-dot" style="background:#fbbf24"></span>f_max (지배 주파수)</span>
+      </div>
+      <canvas id="dftchart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h3>원본 신호 vs 재구성 신호 ŝ(t) — Eq.8</h3>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#f87171"></span>이상 원본 신호</span>
+        <span><span class="legend-dot" style="background:#a78bfa"></span>ŝ(t) 재구성 (A_max·sin)</span>
+      </div>
+      <canvas id="reconstructchart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ⑤ Z-score -->
+<div class="section">
+  <div class="section-title">④ Z-score 이상 판정 — 모드별 임계값 비교</div>
+  <div class="section-desc">고유량 모드: 가속도계 z > 2.56, 유량 z > 1.71 / 중유량: z > 0.75 / 저유량: z > 0.45</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>센서별 Z-score vs 임계값 (현재 윈도우)</h3>
+      <canvas id="zscorechart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h3>Z-score 시계열 추이 (가속도계1 · 60→120 구간)</h3>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#60a5fa"></span>Z-score</span>
+        <span><span class="legend-dot" style="background:#f87171" style="border-radius:0"></span>임계값 2.56</span>
+      </div>
+      <canvas id="ztrend" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ⑥ LLM 출력 -->
+<div class="section">
+  <div class="section-title">⑤ RAAD-LLM 출력 — 논문 Figure 4 형식</div>
+  <div class="section-desc">LLM이 Figure 3 구조화 프롬프트를 받아 Figure 4 형식으로 출력 → Eq.8 이진화 → f(x)=1</div>
+  <div class="grid-3">
+    <div class="card" style="border-color:#ef4444">
+      <h3 style="color:#f87171">📋 Figure 3 프롬프트 (요약)</h3>
+      <div style="font-size:0.75rem; color:#94a3b8; line-height:1.8; font-family:monospace;">
+        <span style="color:#60a5fa">INSTRUCTIONS:</span> Is high deviation<br>
+        &nbsp;&nbsp;present for 가속도계1(진동)?<br>
+        &nbsp;&nbsp;present for 유량?<br>
+        &nbsp;&nbsp;present for 온도(trend)?<br><br>
+        <span style="color:#60a5fa">DATA:</span><br>
+        &nbsp;&nbsp;가속도계1 z-score = <span style="color:#f87171">3.500</span><br>
+        &nbsp;&nbsp;유량 z-score = <span style="color:#f87171">2.850</span><br>
+        &nbsp;&nbsp;온도 consec_dec = <span style="color:#f59e0b">8</span><br><br>
+        <span style="color:#60a5fa">RAG:</span><br>
+        &nbsp;&nbsp;z=3.50 &gt; threshold(2.56) ✓<br>
+        &nbsp;&nbsp;z=2.85 &gt; threshold(1.71) ✓
+      </div>
+    </div>
+    <div class="card" style="border-color:#ef4444">
+      <h3 style="color:#f87171">🤖 Figure 4 LLM 출력</h3>
+      <div style="font-size:0.8rem; color:#fca5a5; line-height:2; font-family:monospace; background:#0f172a; padding:12px; border-radius:6px;">
+        * High deviation is<br>
+        &nbsp;&nbsp;<span style="color:#f87171">present</span> for<br>
+        &nbsp;&nbsp;가속도계1(진동).<br><br>
+        * High deviation is<br>
+        &nbsp;&nbsp;<span style="color:#f87171">present</span> for 유량.<br><br>
+        * High deviation is<br>
+        &nbsp;&nbsp;<span style="color:#f87171">present</span> for<br>
+        &nbsp;&nbsp;온도(Temperature trend).
+      </div>
+    </div>
+    <div class="card" style="border-color:#7c3aed">
+      <h3 style="color:#a78bfa">⚙️ Eq.8 이진화 + Adaptability</h3>
+      <div style="font-size:0.76rem; color:#94a3b8; line-height:1.9; font-family:monospace;">
+        <span style="color:#a78bfa">이진화 (Eq.8):</span><br>
+        &nbsp;이상 센서 존재 → <span style="color:#f87171">f(x) = 1</span><br>
+        &nbsp;→ Anomaly 판정<br><br>
+        <span style="color:#a78bfa">Adaptability:</span><br>
+        &nbsp;f(x) = 1 이므로<br>
+        &nbsp;baseline <span style="color:#60a5fa">업데이트 안함</span><br><br>
+        <span style="color:#a78bfa">고장 유형 추정:</span><br>
+        &nbsp;<span style="color:#fbbf24">valve1 부분 폐쇄</span><br>
+        &nbsp;(유량↓ + 진동↑ + 온도↓)
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// 합성 데이터 생성 (SKAB valve1 이상 시나리오)
+// ═══════════════════════════════════════════════════
+const N_BASE = 60;   // baseline 윈도우
+const N_QUERY = 60;  // query 윈도우 (이상 포함)
+const N = N_BASE + N_QUERY;
+
+function randn() {
+  // Box-Muller
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+// ─── 가속도계1 신호 생성 ───────────────────────────
+// 정상: mean=0.024, std=0.004, 주파수=0.1Hz
+// 이상: mean=0.024, std=0.008, A_max×3 (valve1 → rotor imbalance)
+const FS = 1.0; // 1 sample/sec
+const F_DOM = 0.1; // 지배 주파수 Hz
+
+const accel_raw = [];
+const accel_labels = [];
+for (let i = 0; i < N; i++) {
+  accel_labels.push(i);
+  const t = i / FS;
+  if (i < N_BASE) {
+    // 정상: 소진폭 사인파 + 노이즈
+    accel_raw.push(0.024 + 0.024 * Math.sin(2 * Math.PI * F_DOM * t) + randn() * 0.004);
+  } else {
+    // 이상: 진폭 3배 증가 + 노이즈 증가
+    const progress = (i - N_BASE) / N_QUERY;
+    const anomalyAmp = 0.024 + 0.047 * progress; // 점진적 증가
+    accel_raw.push(anomalyAmp + anomalyAmp * Math.sin(2 * Math.PI * F_DOM * t) + randn() * 0.008);
+  }
+}
+
+// ─── 이상치 주입 (SPC 필터 시연용) ─────────────────
+const accel_with_outlier = [...accel_raw];
+accel_with_outlier[15] = 0.08;  // 1st pass 제거될 이상치
+accel_with_outlier[38] = 0.09;
+accel_with_outlier[82] = 0.12;
+
+// ─── SPC MAMR 계산 ──────────────────────────────────
+const baseline = accel_with_outlier.slice(0, N_BASE);
+
+// X̄
+const xbar = baseline.reduce((a, b) => a + b, 0) / N_BASE;
+
+// mR
+const mR = [];
+for (let i = 1; i < N_BASE; i++) {
+  mR.push(Math.abs(baseline[i] - baseline[i - 1]));
+}
+const rbar = mR.reduce((a, b) => a + b, 0) / mR.length;
+
+const UCL  = xbar + 2.66 * rbar;
+const LCL  = Math.max(0, xbar - 2.66 * rbar);
+const mRUCL = 3.27 * rbar;
+
+// 2-Pass 필터
+function spcFilter(signal, xbar, ucl, lcl) {
+  const filtered = [...signal];
+  const outlier_mask = new Array(signal.length).fill(false);
+  // 1st pass
+  for (let i = 0; i < signal.length; i++) {
+    if (signal[i] > ucl || signal[i] < lcl) {
+      // 선형 보간
+      const prev = i > 0 ? filtered[i - 1] : xbar;
+      const next_idx = signal.findIndex((v, j) => j > i && v <= ucl && v >= lcl);
+      const next = next_idx >= 0 ? signal[next_idx] : xbar;
+      filtered[i] = (prev + next) / 2;
+      outlier_mask[i] = true;
+    }
+  }
+  return { filtered, outlier_mask };
+}
+
+const { filtered: accel_filtered, outlier_mask } = spcFilter(accel_with_outlier, xbar, UCL, LCL);
+
+// mR for all
+const mR_all = [null];
+for (let i = 1; i < N; i++) {
+  mR_all.push(Math.abs(accel_with_outlier[i] - accel_with_outlier[i - 1]));
+}
+
+// ─── 유량 신호 ───────────────────────────────────────
+const flow_raw = [];
+for (let i = 0; i < N; i++) {
+  if (i < N_BASE) {
+    flow_raw.push(120 + randn() * 2);  // 고유량 정상
+  } else {
+    const drop = (i - N_BASE) / N_QUERY * 28;
+    flow_raw.push(120 - drop + randn() * 2); // valve1 → 점진적 감소
+  }
+}
+
+// ─── DFT 계산 (베이스라인 정상 vs 쿼리 이상) ──────
+function computeDFT(signal) {
+  const N = signal.length;
+  const real = new Array(N).fill(0);
+  const imag = new Array(N).fill(0);
+  for (let k = 0; k < N; k++) {
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      real[k] += signal[n] * Math.cos(angle);
+      imag[k] -= signal[n] * Math.sin(angle);
+    }
+  }
+  const amp = real.map((r, k) => (2 / N) * Math.sqrt(r * r + imag[k] * imag[k]));
+  return amp;
+}
+
+const sig_normal = accel_filtered.slice(0, N_BASE);
+const sig_anomaly = accel_filtered.slice(N_BASE, N);
+
+const amp_normal  = computeDFT(sig_normal);
+const amp_anomaly = computeDFT(sig_anomaly);
+
+// 주파수 축 (Hz)
+const freqs = amp_normal.map((_, k) => k / N_BASE * FS);
+const half = Math.floor(N_BASE / 2);
+
+// f_max (DC 제외, 0~half)
+let kmax_n = 1, kmax_a = 1;
+for (let k = 1; k < half; k++) {
+  if (amp_normal[k]  > amp_normal[kmax_n])  kmax_n = k;
+  if (amp_anomaly[k] > amp_anomaly[kmax_a]) kmax_a = k;
+}
+const f_max_n = freqs[kmax_n];
+const A_max_n = amp_normal[kmax_n];
+const f_max_a = freqs[kmax_a];
+const A_max_a = amp_anomaly[kmax_a];
+
+// ─── Z-score 계산 ────────────────────────────────────
+// 베이스라인 DFT A_max 분포
+const A_MAX_MEAN_C = 0.024;   // 논문 기반 수치
+const A_MAX_STD_C  = 0.0065;
+
+const z_normal  = (A_max_n - A_MAX_MEAN_C) / A_MAX_STD_C;
+const z_anomaly = (A_max_a - A_MAX_MEAN_C) / A_MAX_STD_C;
+
+// 유량 z-score
+const FLOW_MEAN_C = 120, FLOW_STD_C = 2.5;
+const z_flow_normal  = Math.abs((flow_raw.slice(0,N_BASE).reduce((a,b)=>a+b)/N_BASE - FLOW_MEAN_C) / FLOW_STD_C);
+const z_flow_anomaly = Math.abs((flow_raw.slice(N_BASE).reduce((a,b)=>a+b)/N_QUERY - FLOW_MEAN_C) / FLOW_STD_C);
+
+// z-score 추이 (sliding window)
+const z_trend_labels = [];
+const z_trend_vals = [];
+const WIN = 20;
+for (let i = WIN; i < N; i++) {
+  const win = accel_filtered.slice(i - WIN, i);
+  const mean_win = win.reduce((a,b)=>a+b)/WIN;
+  const std_win = Math.sqrt(win.map(x=>(x-mean_win)**2).reduce((a,b)=>a+b)/WIN) || 1e-6;
+  const amp_win = computeDFT(win);
+  let kmax = 1;
+  for (let k = 1; k < WIN/2; k++) { if (amp_win[k] > amp_win[kmax]) kmax = k; }
+  const z = (amp_win[kmax] - A_MAX_MEAN_C) / A_MAX_STD_C;
+  z_trend_labels.push(i);
+  z_trend_vals.push(+z.toFixed(3));
+}
+
+// ─── 재구성 신호 ŝ(t) ─────────────────────────────
+const s_mean_anomaly = sig_anomaly.reduce((a,b)=>a+b)/N_QUERY;
+const reconstructed = sig_anomaly.map((_, i) => {
+  const t = i / FS;
+  return A_max_a * Math.sin(2 * Math.PI * f_max_a * t) + Math.abs(s_mean_anomaly);
+});
+
+// ═══════════════════════════════════════════════════
+// 통계 배지 렌더링
+// ═══════════════════════════════════════════════════
+document.getElementById('spc-stats').innerHTML = `
+  <div class="stat-badge"><span>X̄ (Center)</span><strong>${xbar.toFixed(4)}</strong></div>
+  <div class="stat-badge"><span>R̄ (Mean mR)</span><strong>${rbar.toFixed(4)}</strong></div>
+  <div class="stat-badge"><span>UCL</span><strong>${UCL.toFixed(4)}</strong></div>
+  <div class="stat-badge"><span>LCL</span><strong>${LCL.toFixed(4)}</strong></div>
+  <div class="stat-badge warn"><span>mR_UCL</span><strong>${mRUCL.toFixed(4)}</strong></div>
+  <div class="stat-badge danger"><span>이상치 제거</span><strong>${outlier_mask.filter(Boolean).length}개</strong></div>
+`;
+
+document.getElementById('dft-stats').innerHTML = `
+  <div class="stat-badge"><span>정상 f_max</span><strong>${f_max_n.toFixed(3)} Hz</strong></div>
+  <div class="stat-badge"><span>정상 A_max</span><strong>${A_max_n.toFixed(4)}</strong></div>
+  <div class="stat-badge danger"><span>이상 f_max</span><strong>${f_max_a.toFixed(3)} Hz</strong></div>
+  <div class="stat-badge danger"><span>이상 A_max</span><strong>${A_max_a.toFixed(4)}</strong></div>
+  <div class="stat-badge"><span>진동 Z (정상)</span><strong>${z_normal.toFixed(2)}</strong></div>
+  <div class="stat-badge danger"><span>진동 Z (이상)</span><strong>${z_anomaly.toFixed(2)} > 2.56 ⚠️</strong></div>
+`;
+
+// ═══════════════════════════════════════════════════
+// Chart.js 공통 옵션
+// ═══════════════════════════════════════════════════
+const DARK = {
+  color: '#94a3b8',
+  grid:  { color: '#1e293b' },
+};
+const baseOpts = {
+  responsive: true,
+  animation:  { duration: 600 },
+  plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+  scales: {
+    x: { ticks: { color: DARK.color, maxTicksLimit: 10 }, grid: DARK.grid },
+    y: { ticks: { color: DARK.color }, grid: DARK.grid },
+  },
+};
+
+// ─── ① X-Chart ──────────────────────────────────────
+new Chart(document.getElementById('xchart'), {
+  type: 'line',
+  data: {
+    labels: accel_labels,
+    datasets: [
+      {
+        label: '신호', data: accel_with_outlier,
+        borderColor: '#60a5fa', borderWidth: 1.2, pointRadius: 0, tension: 0.3,
+      },
+      {
+        label: 'UCL', data: new Array(N).fill(UCL),
+        borderColor: '#f87171', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0,
+      },
+      {
+        label: 'LCL', data: new Array(N).fill(LCL),
+        borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0,
+      },
+      {
+        label: 'Center', data: new Array(N).fill(xbar),
+        borderColor: '#4ade80', borderWidth: 1.2, borderDash: [3,3], pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      annotation: {},
+      tooltip: { mode: 'index', intersect: false },
+      legend: {
+        display: true,
+        labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } }
+      }
+    },
+  }
+});
+
+// ─── ① mR-Chart ─────────────────────────────────────
+new Chart(document.getElementById('mrchart'), {
+  type: 'line',
+  data: {
+    labels: accel_labels,
+    datasets: [
+      {
+        label: 'mR', data: mR_all,
+        borderColor: '#a78bfa', borderWidth: 1.2, pointRadius: 0, tension: 0.3, fill: false,
+      },
+      {
+        label: 'mR_UCL', data: new Array(N).fill(mRUCL),
+        borderColor: '#f87171', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    }
+  }
+});
+
+// ─── ① 2-Pass Filter Chart ──────────────────────────
+const filteredColorPoints = accel_with_outlier.map((v, i) => {
+  if (outlier_mask[i]) return '#f87171';
+  return 'transparent';
+});
+
+new Chart(document.getElementById('filterchart'), {
+  type: 'line',
+  data: {
+    labels: accel_labels,
+    datasets: [
+      {
+        label: '원본', data: accel_with_outlier,
+        borderColor: '#60a5fa', borderWidth: 1, pointRadius: accel_with_outlier.map((_, i) => outlier_mask[i] ? 5 : 0),
+        pointBackgroundColor: accel_with_outlier.map((_, i) => outlier_mask[i] ? '#f87171' : 'transparent'),
+        tension: 0.3,
+      },
+      {
+        label: '정제', data: accel_filtered,
+        borderColor: '#34d399', borderWidth: 1.5, pointRadius: 0, tension: 0.3, borderDash: [4,3],
+      },
+      {
+        label: 'UCL', data: new Array(N).fill(UCL),
+        borderColor: '#f87171', borderWidth: 1, borderDash: [6,4], pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    }
+  }
+});
+
+// ─── ② 유량 + 모드 구분 ──────────────────────────────
+const flowColors = flow_raw.map(v => {
+  if (v > 100) return 'rgba(34,197,94,0.15)';
+  if (v > 50)  return 'rgba(245,158,11,0.15)';
+  return 'rgba(239,68,68,0.15)';
+});
+
+new Chart(document.getElementById('flowchart'), {
+  type: 'line',
+  data: {
+    labels: accel_labels,
+    datasets: [
+      {
+        label: '유량', data: flow_raw,
+        borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.4,
+        fill: false,
+      },
+      {
+        label: '고유량 경계(100)', data: new Array(N).fill(100),
+        borderColor: '#22c55e', borderWidth: 1, borderDash: [5,5], pointRadius: 0,
+      },
+      {
+        label: '중유량 경계(50)', data: new Array(N).fill(50),
+        borderColor: '#f59e0b', borderWidth: 1, borderDash: [5,5], pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    }
+  }
+});
+
+// ─── ③ DFT 스펙트럼 ─────────────────────────────────
+const freq_axis  = freqs.slice(0, half);
+const amp_n_half = amp_normal.slice(0, half);
+const amp_a_half = amp_anomaly.slice(0, half);
+
+// f_max 강조 포인트
+const kmax_highlight_n = new Array(half).fill(null);
+const kmax_highlight_a = new Array(half).fill(null);
+kmax_highlight_n[kmax_n] = amp_n_half[kmax_n];
+kmax_highlight_a[kmax_a] = amp_a_half[kmax_a];
+
+new Chart(document.getElementById('dftchart'), {
+  type: 'line',
+  data: {
+    labels: freq_axis.map(f => f.toFixed(3)),
+    datasets: [
+      {
+        label: '정상 A_k', data: amp_n_half,
+        borderColor: '#60a5fa', borderWidth: 1.5, pointRadius: 0, tension: 0.2,
+        fill: { target: 'origin', above: 'rgba(96,165,250,0.05)' },
+      },
+      {
+        label: '이상 A_k', data: amp_a_half,
+        borderColor: '#f87171', borderWidth: 1.5, pointRadius: 0, tension: 0.2,
+        fill: { target: 'origin', above: 'rgba(248,113,113,0.08)' },
+      },
+      {
+        label: 'f_max (정상)', data: kmax_highlight_n,
+        borderColor: '#60a5fa', pointRadius: 7, pointStyle: 'triangle',
+        pointBackgroundColor: '#60a5fa', showLine: false,
+      },
+      {
+        label: 'f_max (이상)', data: kmax_highlight_a,
+        borderColor: '#fbbf24', pointRadius: 8, pointStyle: 'triangle',
+        pointBackgroundColor: '#fbbf24', showLine: false,
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      x: { ticks: { color: DARK.color, maxTicksLimit: 8 }, grid: DARK.grid, title: { display: true, text: 'Frequency (Hz)', color:'#64748b' } },
+      y: { ticks: { color: DARK.color }, grid: DARK.grid, title: { display: true, text: 'Amplitude A_k', color:'#64748b' } },
+    },
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    }
+  }
+});
+
+// ─── ③ 재구성 신호 ŝ(t) ─────────────────────────────
+const qLabels = sig_anomaly.map((_, i) => i + N_BASE);
+new Chart(document.getElementById('reconstructchart'), {
+  type: 'line',
+  data: {
+    labels: qLabels,
+    datasets: [
+      {
+        label: '이상 원본', data: sig_anomaly,
+        borderColor: '#f87171', borderWidth: 1.5, pointRadius: 0, tension: 0.3,
+      },
+      {
+        label: 'ŝ(t) Eq.8', data: reconstructed,
+        borderColor: '#a78bfa', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [5,3],
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    }
+  }
+});
+
+// ─── ④ Z-score 막대 차트 ────────────────────────────
+new Chart(document.getElementById('zscorechart'), {
+  type: 'bar',
+  data: {
+    labels: ['가속도계1(정상)', '가속도계1(이상)', '유량(정상)', '유량(이상)'],
+    datasets: [
+      {
+        label: 'Z-score',
+        data: [z_normal, z_anomaly, z_flow_normal, z_flow_anomaly],
+        backgroundColor: [
+          '#60a5fa', '#f87171', '#60a5fa', '#f87171'
+        ],
+        borderRadius: 6,
+      },
+      {
+        label: '임계값',
+        data: [2.56, 2.56, 1.71, 1.71],
+        type: 'line',
+        borderColor: '#fbbf24', borderWidth: 2, borderDash: [6,4],
+        pointRadius: 5, pointBackgroundColor: '#fbbf24',
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    },
+    scales: {
+      x: { ticks: { color: DARK.color, font:{size:11} }, grid: DARK.grid },
+      y: { ticks: { color: DARK.color }, grid: DARK.grid, beginAtZero: true },
+    }
+  }
+});
+
+// ─── ④ Z-score 추이 ─────────────────────────────────
+new Chart(document.getElementById('ztrend'), {
+  type: 'line',
+  data: {
+    labels: z_trend_labels,
+    datasets: [
+      {
+        label: 'Z-score (sliding)', data: z_trend_vals,
+        borderColor: '#60a5fa', borderWidth: 1.5, pointRadius: 0, tension: 0.3,
+        fill: { target: 'origin', above: 'rgba(96,165,250,0.05)' },
+      },
+      {
+        label: '임계값 2.56', data: new Array(z_trend_labels.length).fill(2.56),
+        borderColor: '#f87171', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    ...baseOpts,
+    plugins: {
+      ...baseOpts.plugins,
+      legend: { display: true, labels: { color:'#94a3b8', boxWidth:12, font:{size:11} } }
+    }
+  }
+});
+</script>
+</body>
+</html>

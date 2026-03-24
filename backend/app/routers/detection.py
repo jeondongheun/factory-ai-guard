@@ -44,7 +44,12 @@ async def analyze(request: Request, body: DetectionRequest):
             anomaly_detected=result["anomaly_detected"],
             probability=result["probability"],
             severity=result["severity"],
-            sensor_reading_id=sensor.id
+            sensor_reading_id=sensor.id,
+            # RAAD-LLM 확장 필드
+            mode=result.get("mode"),
+            z_score=result.get("z_score"),
+            primary_sensor=result.get("primary_sensor"),
+            fault_type=result.get("fault_type"),
         )
 
 @router.get("/history")

@@ -5,13 +5,13 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 
-const COLORS = ['#22d3ee', '#f97316'];
+const PIE_COLORS = ['#16A34A', '#DC2626'];
 
 export default function Statistics() {
-  const [summary, setSummary]   = useState(null);
-  const [trend, setTrend]       = useState([]);
+  const [summary, setSummary]     = useState(null);
+  const [trend, setTrend]         = useState([]);
   const [sensorAvg, setSensorAvg] = useState(null);
-  const [days, setDays]         = useState(7);
+  const [days, setDays]           = useState(7);
 
   useEffect(() => {
     getStatsSummary().then(r => setSummary(r.data)).catch(console.error);
@@ -27,64 +27,89 @@ export default function Statistics() {
     { name: '이상', value: summary.total_anomalies },
   ] : [];
 
+  const tooltipStyle = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    fontSize: 12,
+    boxShadow: 'var(--shadow-md)',
+  };
+  const tickStyle = { fontSize: 10, fill: 'var(--text-3)' };
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">통계</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22, background: 'var(--bg)' }}>
+
+      {/* 헤더 */}
+      <div>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>통계</h2>
+        <p style={{ color: 'var(--text-3)', fontSize: 13, marginTop: 2 }}>탐지 결과 집계 및 센서 평균</p>
+      </div>
 
       {/* 요약 카드 */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {[
-            { label: '총 측정',     value: summary.total_readings,  color: 'text-blue-400' },
-            { label: '이상 감지',   value: summary.total_anomalies, color: 'text-red-400' },
-            { label: '이상 비율',   value: `${(summary.anomaly_rate * 100).toFixed(1)}%`, color: 'text-orange-400' },
-            { label: '평균 이상확률', value: `${(summary.avg_probability * 100).toFixed(1)}%`, color: 'text-purple-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-xs text-slate-400 mb-1">{label}</p>
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            { label: '총 측정',       value: summary.total_readings,                                    cls: 'stat-blue' },
+            { label: '이상 감지',     value: summary.total_anomalies,                                   cls: 'stat-high' },
+            { label: '이상 비율',     value: `${(summary.anomaly_rate * 100).toFixed(1)}%`,             cls: 'stat-medium' },
+            { label: '평균 이상 확률', value: `${(summary.avg_probability * 100).toFixed(1)}%`,         cls: 'stat-neutral' },
+          ].map(({ label, value, cls }) => (
+            <div key={label} className="card" style={{ padding: '14px 18px' }}>
+              <p className="stat-label">{label}</p>
+              <p className={`stat-value ${cls}`}>{value}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
         {/* 트렌드 차트 */}
-        <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-300">📈 일별 이상 발생 추이</h3>
+        <div className="card" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>일별 이상 발생 추이</p>
             <select
               value={days}
               onChange={e => setDays(Number(e.target.value))}
-              className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs"
+              className="input"
+              style={{ width: 70, padding: '4px 8px', fontSize: 12 }}
             >
               <option value={7}>7일</option>
               <option value={14}>14일</option>
               <option value={30}>30일</option>
             </select>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={210}>
             <BarChart data={trend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="date" stroke="#64748b" tick={{ fontSize: 10 }} />
-              <YAxis stroke="#64748b" tick={{ fontSize: 10 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} />
-              <Bar dataKey="total"    fill="#334155" name="전체" radius={[4,4,0,0]} />
-              <Bar dataKey="anomalies" fill="#f97316" name="이상" radius={[4,4,0,0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="date" stroke="var(--border-hover)" tick={tickStyle} />
+              <YAxis stroke="var(--border-hover)" tick={tickStyle} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--text-2)' }} />
+              <Bar dataKey="total"    fill="var(--border)"  name="전체" radius={[3,3,0,0]} />
+              <Bar dataKey="anomalies" fill="var(--accent)" name="이상" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* 파이 차트 */}
-        <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">🥧 정상 / 이상 비율</h3>
-          <ResponsiveContainer width="100%" height={220}>
+        <div className="card" style={{ padding: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 16 }}>
+            정상 / 이상 비율
+          </p>
+          <ResponsiveContainer width="100%" height={210}>
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label>
-                {pieData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+              <Pie
+                data={pieData}
+                cx="50%" cy="50%"
+                outerRadius={75}
+                innerRadius={35}
+                dataKey="value"
+                paddingAngle={3}
+              >
+                {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} />
-              <Legend />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -92,15 +117,17 @@ export default function Statistics() {
 
       {/* 센서 평균값 */}
       {sensorAvg && (
-        <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">📊 센서별 평균값</h3>
-          <ResponsiveContainer width="100%" height={200}>
+        <div className="card" style={{ padding: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 16 }}>
+            센서별 평균값
+          </p>
+          <ResponsiveContainer width="100%" height={190}>
             <BarChart data={Object.entries(sensorAvg).map(([k, v]) => ({ name: k, value: v }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 10 }} />
-              <YAxis stroke="#64748b" tick={{ fontSize: 10 }} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} />
-              <Bar dataKey="value" fill="#22d3ee" radius={[4,4,0,0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--border-hover)" tick={tickStyle} />
+              <YAxis stroke="var(--border-hover)" tick={tickStyle} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--text-2)' }} />
+              <Bar dataKey="value" fill="var(--blue)" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

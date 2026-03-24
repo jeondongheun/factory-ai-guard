@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import torch
 
-from app.routers import sensors, detection, diagnosis, history, stats, model_info, upload, settings
+from app.routers import sensors, detection, diagnosis, history, stats, model_info, upload, settings, chat
 from app.services.ml_service import MLService
 from app.services.sensor_simulator import SensorSimulator
 from app.models.database import engine, Base
@@ -40,7 +40,13 @@ app = FastAPI(
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:80"],
+    allow_origins=[
+        "http://localhost",       # nginx 80포트 (포트 없음)
+        "http://localhost:80",    # nginx 80포트 (명시적)
+        "http://localhost:3000",  # React 개발 서버
+        "http://127.0.0.1",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,6 +61,7 @@ app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(model_info.router, prefix="/api/model", tags=["model"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+app.include_router(chat.router,     prefix="/api/chat",     tags=["chat"])
 
 @app.get("/")
 async def root():

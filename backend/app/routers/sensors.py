@@ -18,7 +18,7 @@ async def get_sensor_history(request: Request, limit: int = 100):
     return {"data": buffer, "count": len(buffer)}
 
 @router.websocket("/ws/realtime")
-async def websocket_realtime(websocket: WebSocket, request: Request):
+async def websocket_realtime(websocket: WebSocket):
     """실시간 센서 데이터 WebSocket 스트림"""
     await ws_manager.connect(websocket)
     simulator = websocket.app.state.simulator
