@@ -11,3 +11,9 @@ venv/
 backend/ml/data/
 backend/venv/
 frontend/node_modules/
+
+# 그래프 이미지
+spc_dft_images/
+*.png
+*.jpg
+*.jpeg
