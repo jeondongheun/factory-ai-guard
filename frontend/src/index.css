@@ -29,12 +29,12 @@
   --accent-subtle: rgba(217,119,6,.08);
 
   /* — Sidebar — */
-  --sidebar-bg:      #111110;
-  --sidebar-text:    rgba(255,255,255,.65);
-  --sidebar-text-hi: rgba(255,255,255,.95);
-  --sidebar-hover:   rgba(255,255,255,.07);
-  --sidebar-active:  rgba(217,119,6,.18);
-  --sidebar-border:  rgba(255,255,255,.07);
+  --sidebar-bg:      #ECEAE4;
+  --sidebar-text:    #6B6762;
+  --sidebar-text-hi: #1A1916;
+  --sidebar-hover:   rgba(0,0,0,.05);
+  --sidebar-active:  rgba(217,119,6,.12);
+  --sidebar-border:  rgba(0,0,0,.07);
 
   /* — Status — */
   --green:  #15803D; --green-bg:  #F0FDF4; --green-border: #BBF7D0;
@@ -254,8 +254,8 @@ a { color: inherit; text-decoration: none; }
 /* subtle gradient shine on sidebar */
 .sidebar::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 200px;
-  background: linear-gradient(135deg, rgba(217,119,6,.06) 0%, transparent 60%);
+  position: absolute; top: 0; left: 0; right: 0; height: 180px;
+  background: linear-gradient(160deg, rgba(217,119,6,.07) 0%, transparent 60%);
   pointer-events: none;
 }
 .sidebar-logo {
@@ -284,7 +284,7 @@ a { color: inherit; text-decoration: none; }
 }
 .nav-item.active {
   background: var(--sidebar-active);
-  color: #FBBF24;
+  color: var(--accent);
   font-weight: 600;
 }
 .nav-item.active::before {
@@ -303,7 +303,7 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; gap: 8px;
 }
 .sidebar-version {
-  background: rgba(255,255,255,.08);
+  background: rgba(0,0,0,.06);
   border-radius: 4px; padding: 2px 6px;
   font-size: 10px; font-weight: 600; letter-spacing: .04em;
 }

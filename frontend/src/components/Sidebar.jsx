@@ -55,7 +55,7 @@ export default function Sidebar() {
       </div>
 
       {/* 섹션 레이블 */}
-      <div style={{ padding:'16px 18px 4px', fontSize:10, fontWeight:700, color:'rgba(255,255,255,.25)', textTransform:'uppercase', letterSpacing:'.08em' }}>
+      <div style={{ padding:'16px 18px 4px', fontSize:10, fontWeight:700, color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'.08em' }}>
         메뉴
       </div>
 

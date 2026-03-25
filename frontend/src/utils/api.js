@@ -22,7 +22,8 @@ export const uploadCSV = (file) => {
   const formData = new FormData();
   formData.append('file', file);
   return api.post('/api/upload/csv', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 600000,   // CSV 배치 분석은 최대 10분 허용 (LLM 파이프라인 처리시간 고려)
   });
 };
 export const getUploadResult = (jobId) => api.get(`/api/upload/result/${jobId}`);

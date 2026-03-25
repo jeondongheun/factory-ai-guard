@@ -5,6 +5,7 @@ import numpy as np
 import io
 import uuid
 import os
+import asyncio
 
 router = APIRouter()
 
@@ -82,11 +83,21 @@ async def upload_csv(request: Request, file: UploadFile = File(...)):
         for i in range(0, n - window_size, step):
             window_arr = features[i:i + window_size]   # (60, 8)
 
-            # 논문 Figure 2: LLM in the loop (API 키 있을 때)
+            # 논문 Figure 2: LLM in the loop
+            # SPC 1차 판단 후 이상 의심(probability > 0.3) 윈도우에만 LLM 호출 → 속도 최적화
+            # detect_with_llm은 동기 블로킹 함수 → asyncio.to_thread로 이벤트루프 블로킹 방지
             if use_llm:
-                result = ml_service.detect_with_llm(window_arr.tolist(), api_key=api_key)
-                if result.get("adaptability_updated"):
-                    llm_updates += 1
+                spc_result = ml_service.detect(window_arr.tolist())
+                if spc_result.get("probability", 0) > 0.3:
+                    result = await asyncio.to_thread(
+                        ml_service.detect_with_llm,
+                        window_arr.tolist(),
+                        api_key
+                    )
+                    if result.get("adaptability_updated"):
+                        llm_updates += 1
+                else:
+                    result = spc_result
             else:
                 result = ml_service.detect(window_arr.tolist())
 
